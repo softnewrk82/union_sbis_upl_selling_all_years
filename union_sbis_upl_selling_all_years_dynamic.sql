@@ -26,11 +26,11 @@ begin
                     when src.attname is not null then format(
                         'coalesce(%1$I::text, %2$L) as %1$I',
                         tgt.attname,
-                        'str'
+                        ''
                     )
                     else format(
                         '%L as %I',
-                        'str',
+                        '',
                         tgt.attname
                     )
                 end,
@@ -293,19 +293,16 @@ declare
         'sbis_week_202410_end_first_week_uploading',
         'sbis_week_202410_end_s_week_uploading',
         'sbis_week_202410_end_t_week_uploading',
-        'sbis_week_2202410_end_t_week_uploading',
         'sbis_week_202410_end_f_week_uploading',
         'sbis_week_202410_end_r_week_uploading',
         'sbis_week_202411_end_first_week_uploading',
         'sbis_week_202411_end_s_week_uploading',
         'sbis_week_202411_end_t_week_uploading',
-        'sbis_week_2202411_end_t_week_uploading',
         'sbis_week_202411_end_f_week_uploading',
         'sbis_week_202411_end_r_week_uploading',
         'sbis_week_202412_end_first_week_uploading',
         'sbis_week_202412_end_s_week_uploading',
         'sbis_week_202412_end_t_week_uploading',
-        'sbis_week_2202412_end_t_week_uploading',
         'sbis_week_202412_end_f_week_uploading',
         'sbis_week_202412_end_r_week_uploading'
     ];
@@ -371,7 +368,6 @@ begin
             format('sbis_week_%s_end_first_week_uploading', v_month_code),
             format('sbis_week_%s_end_s_week_uploading', v_month_code),
             format('sbis_week_%s_end_t_week_uploading', v_month_code),
-            format('sbis_week_2%s_end_t_week_uploading', v_month_code),
             format('sbis_week_%s_end_f_week_uploading', v_month_code),
             format('sbis_week_%s_end_r_week_uploading', v_month_code)
         ];
@@ -461,7 +457,47 @@ $$;
 
 call union_sbis_upl_selling_all_years();
 
+-- --------------------------------------------------------
+-- --------------------------------------------------------
+-- --------------------------------------------------------
 
--- drop table sbis_upl_selling.sbis_upl_selling;
-select * from sbis_upl_selling.sbis_upl_selling
-OFFSET 10;
+create or replace procedure create_truncate_table_sbis_upl_selling()
+    language plpgsql
+    as $$
+        begin
+            drop table if exists sbis_upl_selling_from_warehouse.sbis_upl_selling;
+            create table sbis_upl_selling_from_warehouse.sbis_upl_selling as (select * from sbis_upl_selling_from_warehouse.columns_name_sbis_upl);
+            alter table sbis_upl_selling_from_warehouse.sbis_upl_selling
+            drop column level_0;
+
+            truncate table sbis_upl_selling_from_warehouse.sbis_upl_selling; 
+        
+
+        end;
+$$;
+
+
+call create_truncate_table_sbis_upl_selling();
+
+
+-- --------------------------------------------------------
+-- --------------------------------------------------------
+-- --------------------------------------------------------
+
+create or replace procedure create_table_sbis_coll_sell()
+    language plpgsql
+    as $$
+        begin
+            drop table if exists intermediate_scheme.sbis_coll_sell;
+            create table intermediate_scheme.sbis_coll_sell as (select * from sbis_upl_selling_from_warehouse.sbis_upl_selling);
+
+            ALTER TABLE intermediate_scheme.sbis_coll_sell
+            ADD COLUMN inside_unique_id UUID DEFAULT uuid_generate_v1();
+
+            UPDATE intermediate_scheme.sbis_coll_sell
+            set inside_unique_id = uuid_generate_v1()
+            where inside_unique_id is NULL; 
+
+        end;
+$$;
+call create_table_sbis_coll_sell();
